@@ -1,10 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/denverdino/aliyungo/common"
 	"github.com/denverdino/aliyungo/ecs"
 )
@@ -22,38 +22,46 @@ func main() {
 	ch := make(chan int)
 
 	r, _, _ := client.DescribeInstances(&ecs.DescribeInstancesArgs{RegionId: region})
-	spew.Dump(r)
-	spew.Dump(len(r))
+	fmt.Println("Instance count:", len(r))
 
 	for _, instance := range r {
 		go reinstallInstance(ch, instance.InstanceId)
 	}
 
 	for i := 0; i < len(r); i++ {
-		spew.Dump(<-ch)
+		<-ch
 	}
+
+	fmt.Println("DONE!!!")
 }
 
 func reinstallInstance(ch chan int, instanceId string) {
+	//spew.Dump(instanceId)
+
 	client.StopInstance(instanceId, false)
-	spew.Dump(instanceId)
-	r, _ := client.DescribeInstanceAttribute(instanceId)
-	for r.Status != "Stopped" {
-		spew.Dump("sleep")
-		time.Sleep(3 * time.Second)
-		r, _ := client.DescribeInstanceAttribute(instanceId)
-		if r.Status == "Stopped" {
-			break
-		}
-	}
-	spew.Dump("Stopped")
+	waitUntil(instanceId, "Stopped")
 
 	diskId, _ := client.ReplaceSystemDisk(&ecs.ReplaceSystemDiskArgs{InstanceId: instanceId, ImageId: "ubuntu_16_0402_64_40G_alibase_20170711.vhd"})
-	spew.Dump(diskId)
+	fmt.Printf("%s: diskId %s\n", instanceId, diskId)
 
 	time.Sleep(5 * time.Second)
 
 	client.StartInstance(instanceId)
+	waitUntil(instanceId, "Running")
 
 	ch <- 0
+}
+
+func waitUntil(instanceId string, state ecs.InstanceStatus) {
+	r, _ := client.DescribeInstanceAttribute(instanceId)
+	for r.Status != state {
+		fmt.Printf("%s: sleep until %s\n", instanceId, state)
+		time.Sleep(3 * time.Second)
+		r, _ := client.DescribeInstanceAttribute(instanceId)
+		if r.Status == state {
+			break
+		}
+	}
+
+	fmt.Printf("%s: %s\n", instanceId, state)
 }
