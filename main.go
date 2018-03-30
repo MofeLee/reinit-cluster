@@ -41,7 +41,7 @@ func reinstallInstance(ch chan int, instanceId string) {
 	client.StopInstance(instanceId, false)
 	waitUntil(instanceId, "Stopped")
 
-	diskId, _ := client.ReplaceSystemDisk(&ecs.ReplaceSystemDiskArgs{InstanceId: instanceId, ImageId: "ubuntu_16_0402_64_20G_alibase_20170818.vhd"})
+	diskId, _ := client.ReplaceSystemDisk(&ecs.ReplaceSystemDiskArgs{InstanceId: instanceId, ImageId: "ubuntu_16_0402_64_20G_alibase_20180326.vhd"})
 	fmt.Printf("%s: diskId %s\n", instanceId, diskId)
 
 	time.Sleep(5 * time.Second)
